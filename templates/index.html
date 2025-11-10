@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NYC DRAMA LIVE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f0c29; color: white; font-family: 'Inter', sans-serif; }
+        .card { background: rgba(255,51,102,0.1); border: 1px solid #ff3366; border-radius: 15px; }
+        .btn-drama { background: #ff3366; color: white; }
+        .btn-drama:hover { background: #ff0066; }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <h1 class="text-center display-4 mb-3">NYC DRAMA LIVE</h1>
+    <p class="text-center lead">Last 24 hours • {{ total }} complaints</p>
+    <p class="text-center mb-4">Borough: <strong>{{ borough }}</strong></p>
+
+    <div class="text-center mb-5">
+        <a href="/" class="btn btn-drama me-2">ALL BOROUGHS</a>
+        <a href="/?borough=BROOKLYN" class="btn btn-outline-light me-2">BROOKLYN</a>
+        <a href="/?borough=MANHATTAN" class="btn btn-outline-light me-2">MANHATTAN</a>
+        <a href="/?borough=QUEENS" class="btn btn-outline-light">QUEENS</a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <h3>Latest Drama</h3>
+            <div id="drama-list">
+                {% for c in complaints %}
+                <div class="card p-3 mb-3">
+                    <h5>URGENT: {{ c.descriptor }}</h5>
+                    <p class="mb-0">{{ c.incident_address }} • {{ c.created_date[11:16] }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <h3>Live Map</h3>
+            <div class="card p-3">
+                {{ map_html | safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const ws = new WebSocket("wss://" + location.host + "/ws");
+ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    document.getElementById('drama-list').innerHTML = data.drama.map(d => 
+        `<div class="card p-3 mb-3"><h5>URGENT: ${d.split(' — ')[0]}</h5><p class="mb-0">${d.split(' — ')[1]}</p></div>`
+    ).join('');
+};
+</script>
+</body>
+</html>
