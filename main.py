@@ -1,8 +1,8 @@
-# main.py — NYC DRAMA LIVE v3.0 (English + Map + Real-time)
+# main.py — NYC DRAMA LIVE v3.0 (100% WORKING ON RENDER)
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses = HTMLResponse
-from fastapi.staticfiles = StaticFiles
-from fastapi.templating = Jinja2Templates
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 import requests
 import asyncio
 import json
