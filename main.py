@@ -41,6 +41,9 @@ def create_map(complaints):
                 fill=True,
                 popup=folium.Popup(popup, max_width=300)
             ).add_to(m)
+
+last_update = complaints[0].get("created_date", "Unknown") if complaints else "No data"
+last_update = last_update[:16].replace("T", " ")            
     
     return m._repr_html_()
 
@@ -56,6 +59,7 @@ async def home(request: Request, borough: str = "ALL"):
         "borough": borough,
         "map_html": map_html
     })
+"last_update": last_update
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
