@@ -27,37 +27,31 @@
         .modal-content { background: #1a1a1a; border: 1px solid #ff3366; }
         .modal-header { border-bottom: 1px solid #ff3366; }
         .time-badge { background: #ff3366; color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.8em; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 <div class="container py-5">
     <h1 class="text-center display-5 mb-2">NYC DRAMA LIVE</h1>
     <p class="text-center header-text mb-1">Last 24 hours • {{ total }} complaints</p>
-    <p class="text-center header-text mb-1">Data last updated: {{ last_update }} (NYC time)</p>
-    <p class="text-center header-text mb-4">Borough: <strong>{{ borough }}</strong></p>
+    <p class="text-center header-text mb-4">Borough: <strong id="current-borough">{{ borough }}</strong></p>
 
     <div class="text-center mb-5">
-        <a href="/" class="btn {% if borough == 'ALL' %}btn-active{% else %}btn-outline-light{% endif %} me-2">ALL BOROUGHS</a>
-        <a href="/?borough=BROOKLYN" class="btn {% if borough == 'BROOKLYN' %}btn-active{% else %}btn-outline-light{% endif %} me-2">BROOKLYN</a>
-        <a href="/?borough=MANHATTAN" class="btn {% if borough == 'MANHATTAN' %}btn-active{% else %}btn-outline-light{% endif %} me-2">MANHATTAN</a>
-        <a href="/?borough=QUEENS" class="btn {% if borough == 'QUEENS' %}btn-active{% else %}btn-outline-light{% endif %}">QUEENS</a>
+        <button id="show-all" class="btn btn-outline-light me-2">ALL BOROUGHS</button>
+        <button id="show-brooklyn" class="btn btn-outline-light me-2">BROOKLYN</button>
+        <button id="show-manhattan" class="btn btn-outline-light me-2">MANHATTAN</button>
+        <button id="show-queens" class="btn btn-outline-light">QUEENS</button>
+    </div>
+
+    <div class="text-center mb-4">
+        <button id="show-latest" class="btn btn-danger btn-lg">SHOW LATEST DRAMA</button>
     </div>
 
     <div class="row">
         <div class="col-lg-6 mb-4">
             <h3 class="header-text">Latest Drama</h3>
-            <div id="drama-list">
-                {% for c in complaints %}
-                <div class="drama-card p-4 mb-3" onclick="showDetails({{ loop.index0 }})" data-complaint='{{ c | tojson }}'>
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-danger mb-1">URGENT: {{ c.descriptor }}</h6>
-                            <p class="mb-1 text-light">{{ c.incident_address }}</p>
-                        </div>
-                        <span class="time-badge">{{ c.created_date[11:16] }}</span>
-                    </div>
-                </div>
-                {% endfor %}
+            <div id="drama-list" class="hidden">
+                <!-- JS fills this -->
             </div>
         </div>
         <div class="col-lg-6">
@@ -77,58 +71,57 @@
                 <h5 class="modal-title text-danger">COMPLAINT DETAILS</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="modalBody">
-                <!-- JS fills this -->
-            </div>
+            <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Animation on load
-    document.querySelectorAll('.drama-card').forEach((card, i) => {
-        setTimeout(() => card.classList.add('show'), i * 150);
-    });
+    let currentBorough = "{{ borough }}";
 
-    // WebSocket real-time
-    const ws = new WebSocket("wss://" + location.host + "/ws");
-    ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        const list = document.getElementById('drama-list');
-        list.innerHTML = '';
-        data.drama.forEach((d, i) => {
-            const parts = d.split(' — ');
-            const div = document.createElement('div');
-            div.className = 'drama-card p-4 mb-3';
-            div.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h6 class="text-danger mb-1">URGENT: ${parts[0]}</h6>
-                        <p class="mb-1 text-light">${parts[1] || d}</p>
-                    </div>
-                    <span class="time-badge">LIVE</span>
-                </div>`;
-            setTimeout(() => div.classList.add('show'), i * 150);
-            list.appendChild(div);
+    // Update borough buttons
+    function updateButtons() {
+        document.querySelectorAll('#show-all, #show-brooklyn, #show-manhattan, #show-queens').forEach(btn => {
+            btn.classList.remove('btn-active');
         });
+        const activeBtn = document.getElementById(`show-${currentBorough.toLowerCase()}`);
+        if (activeBtn) activeBtn.classList.add('btn-active');
+        document.getElementById('current-borough').textContent = currentBorough;
+    }
+
+    // Click handlers
+    document.getElementById('show-all').onclick = () => { currentBorough = 'ALL'; updateButtons(); };
+    document.getElementById('show-brooklyn').onclick = () => { currentBorough = 'BROOKLYN'; updateButtons(); };
+    document.getElementById('show-manhattan').onclick = () => { currentBorough = 'MANHATTAN'; updateButtons(); };
+    document.getElementById('show-queens').onclick = () => { currentBorough = 'QUEENS'; updateButtons(); };
+
+    // Show latest drama
+    document.getElementById('show-latest').onclick = () => {
+        fetch(`/api/drama?borough=${currentBorough}`)
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('drama-list');
+                list.innerHTML = '';
+                list.classList.remove('hidden');
+                data.drama.forEach((d, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'drama-card p-4 mb-3';
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="text-danger mb-1">URGENT: ${d.split(' — ')[0]}</h6>
+                                <p class="mb-1 text-light">${d.split(' — ')[1] || d}</p>
+                            </div>
+                            <span class="time-badge">LIVE</span>
+                        </div>`;
+                    setTimeout(() => div.classList.add('show'), i * 150);
+                    list.appendChild(div);
+                });
+            });
     };
 
-    // Modal details
-    function showDetails(index) {
-        const card = document.querySelectorAll('.drama-card')[index];
-        const c = JSON.parse(card.dataset.complaint);
-        document.getElementById('modalBody').innerHTML = `
-            <p><strong>Type:</strong> ${c.complaint_type || 'N/A'}</p>
-            <p><strong>Descriptor:</strong> ${c.descriptor || 'N/A'}</p>
-            <p><strong>Address:</strong> ${c.incident_address || 'N/A'}</p>
-            <p><strong>Borough:</strong> ${c.borough || 'N/A'}</p>
-            <p><strong>Created:</strong> ${c.created_date || 'N/A'}</p>
-            <p><strong>Status:</strong> ${c.status || 'N/A'}</p>
-            <p><strong>Agency:</strong> ${c.agency || 'N/A'}</p>
-        `;
-        new bootstrap.Modal(document.getElementById('complaintModal')).show();
-    }
+    updateButtons();
 </script>
 </body>
 </html>

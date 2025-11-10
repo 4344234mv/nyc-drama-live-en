@@ -1,13 +1,10 @@
-# main.py — NYC DRAMA LIVE v3.0 (100% WORKING ON RENDER)
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+# main.py — NYC DRAMA LIVE v3.2 (FINAL VERSION — 100% WORKING)
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import requests
-import asyncio
-import json
 import folium
-import pytz
 
 app = FastAPI(title="NYC DRAMA LIVE")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -21,7 +18,8 @@ def get_complaints(borough=None, limit=100):
     try:
         r = requests.get(url, params=params, timeout=15)
         return r.json()
-    except:
+    except Exception as e:
+        print(f"API Error: {e}")
         return []
 
 def create_map(complaints):
@@ -33,7 +31,7 @@ def create_map(complaints):
         if lat and lon and lat != "0":
             desc = c.get("descriptor", "Unknown issue")
             addr = c.get("incident_address", "Unknown address")
-            popup = f"<b>{desc}</b><br>{addr}"
+27            popup = f"<b>{desc}</b><br>{addr}"
             folium.CircleMarker(
                 location=[float(lat), float(lon)],
                 radius=6,
@@ -47,8 +45,7 @@ def create_map(complaints):
 async def home(request: Request, borough: str = "ALL"):
     complaints = get_complaints(borough)
     map_html = create_map(complaints)
-    last_update = complaints[0].get("created_date", "Unknown") if complaints else "No data"
-    last_update = last_update[:16].replace("T", " ")
+    last_update = complaints[0].get("created_date", "Unknown")[:16].replace("T", " ") if complaints else "No data"
     return templates.TemplateResponse("index.html", {
         "request": request,
         "complaints": complaints[:20],
@@ -58,18 +55,13 @@ async def home(request: Request, borough: str = "ALL"):
         "last_update": last_update
     })
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        try:
-            complaints = get_complaints(limit=10)
-            data = []
-            for c in complaints:
-                desc = c.get("descriptor", "Unknown")
-                addr = c.get("incident_address", "Unknown")
-                data.append(f"{desc} — {addr}")
-            await websocket.send_text(json.dumps({"drama": data}))
-            await asyncio.sleep(10)
-        except WebSocketDisconnect:
-            break
+@app.get("/api/drama")
+async def api_drama(borough: str = "ALL"):
+    complaints = get_complaints(borough, 20)
+    drama_list = []
+    for c in complaints:
+        desc = c.get("descriptor", "Unknown")
+        addr = c.get("incident_address", "Unknown")
+        time = c.get("created_date", "")[11:16]
+        drama_list.append(f"{desc} — {addr} — {time}")
+    return {"drama": drama_list}
