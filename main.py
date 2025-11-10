@@ -1,4 +1,4 @@
-# main.py — NYC DRAMA LIVE v3.0 (English + Map + Real-time)
+# main.py — NYC DRAMA LIVE v3.0 (100% working on Render)
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,7 +27,6 @@ def get_complaints(borough=None, limit=100):
 def create_map(complaints):
     nyc_coords = [40.7128, -74.0060]
     m = folium.Map(location=nyc_coords, zoom_start=12, tiles="CartoDB positron")
-    
     for c in complaints[:50]:
         lat = c.get("latitude")
         lon = c.get("longitude")
@@ -42,25 +41,22 @@ def create_map(complaints):
                 fill=True,
                 popup=folium.Popup(popup, max_width=300)
             ).add_to(m)
-
-last_update = complaints[0].get("created_date", "Unknown") if complaints else "No data"
-last_update = last_update[:16].replace("T", " ")            
-    
     return m._repr_html_()
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, borough: str = "ALL"):
     complaints = get_complaints(borough)
     map_html = create_map(complaints)
-    
+    last_update = complaints[0].get("created_date", "Unknown") if complaints else "No data"
+    last_update = last_update[:16].replace("T", " ")
     return templates.TemplateResponse("index.html", {
         "request": request,
         "complaints": complaints[:20],
         "total": len(complaints),
         "borough": borough,
-        "map_html": map_html
+        "map_html": map_html,
+        "last_update": last_update
     })
-"last_update": last_update
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
